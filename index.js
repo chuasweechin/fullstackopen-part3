@@ -1,4 +1,3 @@
-const persons = require('./persons')
 const express = require('express')
 
 const app = express()
@@ -6,6 +5,28 @@ const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
 
+let persons = [
+    {
+      "name": "Arto Hellas",
+      "number": "040-123456",
+      "id": 1
+    },
+    {
+      "name": "Ada Lovelace",
+      "number": "39-44-5323523",
+      "id": 2
+    },
+    {
+      "name": "Dan Abramov",
+      "number": "12-43-234345",
+      "id": 3
+    },
+    {
+      "name": "Mary Poppendieck",
+      "number": "39-23-6423122",
+      "id": 4
+    }
+]
 
 // express middleware
 morgan.token('request-body', function (req, res) { return JSON.stringify(req.body) })
@@ -43,20 +64,20 @@ app.use(morgan(function (tokens, req, res) {
 
 // helper function
 const generateId = () => {
-  return Math.floor(Math.random() * (10e5 - 5)) + 5
+    return Math.floor(Math.random() * (10e5 - 5)) + 5
 }
 
 
 // routes
 app.get('/info', (req, res) => {
-  res.send(`
-    <div>
-        Phonebook has info for ${ persons.length } people
-    </div>
-    <br/>
-    <div>
-        ${ new Date() }
-    </div>`)
+    res.send(`
+        <div>
+            Phonebook has info for ${ persons.length } people
+        </div>
+        <br/>
+        <div>
+            ${ new Date() }
+        </div>`)
 })
 
 app.get('/api/persons', (req, res) => {
