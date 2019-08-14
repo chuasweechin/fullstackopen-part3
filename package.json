@@ -6,7 +6,7 @@
   "scripts": {
     "web": "node index.js",
     "start": "node index.js",
-    "watch": "source .env && nodemon index.js",
+    "watch": "npm run build:ui && source .env && nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:ui": "rm -rf build && cd ../part2/phonebook && npm run build --prod && cp -r build ../../part3",
     "deploy": "git push heroku master",

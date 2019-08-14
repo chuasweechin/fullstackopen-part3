@@ -11,11 +11,21 @@ const cors = require('cors')
 morgan.token('request-body', function (req, res) { return JSON.stringify(req.body) })
 
 const requestLogger = (request, response, next) => {
+  console.log('--------------')
   console.log('Method:', request.method)
   console.log('Path:  ', request.path)
   console.log('Body:  ', request.body)
-  console.log('--------------')
   next()
+}
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError' && error.kind === 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)
 }
 
 const unknownEndpoint = (request, response) => {
@@ -37,7 +47,7 @@ app.use(morgan(function (tokens, req, res) {
         tokens['response-time'](req, res),
         'ms',
         tokens['request-body'](req, res),
-    ].join(' ')
+    ].join(' ').concat('\n--------------')
 }))
 
 
@@ -48,7 +58,7 @@ app.use(morgan(function (tokens, req, res) {
 
 
 // routes
-app.get('/info', (request, response) => {
+app.get('/info', (request, response, next) => {
     Person
         .find({})
         .then(persons => {
@@ -61,46 +71,42 @@ app.get('/info', (request, response) => {
                     ${ new Date() }
                 </div>`)
         })
+        .catch(error => next(error))
 })
 
-app.get('/api/persons', (request, response) => {
+app.get('/api/persons', (request, response, next) => {
     Person
         .find({})
         .then(persons => {
             response.json(persons.map(p => p.toJSON()))
         })
+        .catch(error => next(error))
 })
 
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
     Person
         .findById(request.params.id)
         .then(person => {
-            response.json(person.toJSON())
+            if (person) {
+                response.json(person.toJSON())
+            } else {
+                response.status(404).send({ error: 'not found' })
+            }
+
         })
-        .catch(err => {
-            console.log(err)
-            response.status(404).end()
-        })
+        .catch(error => next(error))
 })
 
 app.post('/api/persons', (request, response) => {
-    const body = request.body
-
-    if (!body.name || !body.number) {
+    if (!request.body.name || !request.body.number) {
         return response.status(400).json({
             error: 'content missing'
         })
     }
 
-    // if (persons.find(p => p.name === body.name)) {
-    //     return response.status(400).json({
-    //         error: 'name must be unique'
-    //     })
-    // }
-
     const person = new Person({
-        name: body.name,
-        number: body.number
+        name: request.body.name,
+        number: request.body.number
     })
 
     person
@@ -108,16 +114,39 @@ app.post('/api/persons', (request, response) => {
         .then(person => {
             response.json(person.toJSON())
         })
+        .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(p => p.id !== id)
+app.put('/api/persons/:id', (request, response, next) => {
+    if (!request.body.name || !request.body.number) {
+        return response.status(400).json({
+            error: 'content missing'
+        })
+    }
 
-    response.status(204).end()
+    const person = {
+        name: request.body.name,
+        number: request.body.number,
+    }
+
+    Person
+        .findByIdAndUpdate(request.params.id, person, { new: true })
+        .then(updatedPerson => {
+            response.json(updatedPerson.toJSON())
+        })
+})
+
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person
+        .findByIdAndRemove(request.params.id)
+        .then(result => {
+            response.status(204).end()
+        })
+        .catch(error => next(error))
 })
 
 app.use(unknownEndpoint)
+app.use(errorHandler)
 
 
 // server configuration
