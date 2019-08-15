@@ -8,14 +8,16 @@ const cors = require('cors')
 
 
 // express middleware
-morgan.token('request-body', function (req, res) { return JSON.stringify(req.body) })
+morgan.token('request-body', (request) => {
+    return JSON.stringify(request.body)
+})
 
 const requestLogger = (request, response, next) => {
-  console.log('--------------')
-  console.log('Method:', request.method)
-  console.log('Path:  ', request.path)
-  console.log('Body:  ', request.body)
-  next()
+    console.log('--------------')
+    console.log('Method:', request.method)
+    console.log('Path:  ', request.path)
+    console.log('Body:  ', request.body)
+    next()
 }
 
 const errorHandler = (error, request, response, next) => {
@@ -31,7 +33,7 @@ const errorHandler = (error, request, response, next) => {
 }
 
 const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
+    response.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.use(cors())
@@ -39,16 +41,16 @@ app.use(bodyParser.json())
 app.use(requestLogger)
 app.use(express.static('build'))
 
-app.use(morgan(function (tokens, req, res) {
+app.use(morgan(function (tokens, request, response) {
     return [
-        tokens.method(req, res),
-        tokens.url(req, res),
-        tokens.status(req, res),
-        tokens.res(req, res, 'content-length'),
+        tokens.method(request, response),
+        tokens.url(request, response),
+        tokens.status(request, response),
+        tokens.res(request, response, 'content-length'),
         '-',
-        tokens['response-time'](req, res),
+        tokens['response-time'](request, response),
         'ms',
-        tokens['request-body'](req, res),
+        tokens['request-body'](request, response),
     ].join(' ').concat('\n--------------')
 }))
 
@@ -136,12 +138,13 @@ app.put('/api/persons/:id', (request, response, next) => {
         .then(updatedPerson => {
             response.json(updatedPerson.toJSON())
         })
+        .catch(error => next(error))
 })
 
 app.delete('/api/persons/:id', (request, response, next) => {
     Person
         .findByIdAndRemove(request.params.id)
-        .then(result => {
+        .then(() => {
             response.status(204).end()
         })
         .catch(error => next(error))
@@ -155,5 +158,5 @@ app.use(errorHandler)
 const PORT = process.env.PORT || 3001
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+    console.log(`Server running on port ${PORT}`)
 })
