@@ -8,32 +8,32 @@ const cors = require('cors')
 
 
 // express middleware
-morgan.token('request-body', (request) => {
-    return JSON.stringify(request.body)
+morgan.token('request-body', (req) => {
+    return JSON.stringify(req.body)
 })
 
-const requestLogger = (request, response, next) => {
+const requestLogger = (req, res, next) => {
     console.log('--------------')
-    console.log('Method:', request.method)
-    console.log('Path:  ', request.path)
-    console.log('Body:  ', request.body)
+    console.log('Method:', req.method)
+    console.log('Path:  ', req.path)
+    console.log('Body:  ', req.body)
     next()
 }
 
-const errorHandler = (error, request, response, next) => {
+const errorHandler = (error, req, res, next) => {
     console.error(error.message)
 
     if (error.name === 'CastError' && error.kind === 'ObjectId') {
-        return response.status(400).send({ error: 'malformatted id' })
+        return res.status(400).send({ error: 'malformatted id' })
     } else if (error.name === 'ValidationError') {
-        return response.status(400).json({ error: error.message })
+        return res.status(400).json({ error: error.message })
     }
 
     next(error)
 }
 
-const unknownEndpoint = (request, response) => {
-    response.status(404).send({ error: 'unknown endpoint' })
+const unknownEndpoint = (req, res) => {
+    res.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.use(cors())
@@ -41,16 +41,16 @@ app.use(bodyParser.json())
 app.use(requestLogger)
 app.use(express.static('build'))
 
-app.use(morgan(function (tokens, request, response) {
+app.use(morgan(function (tokens, req, res) {
     return [
-        tokens.method(request, response),
-        tokens.url(request, response),
-        tokens.status(request, response),
-        tokens.res(request, response, 'content-length'),
+        tokens.method(req, res),
+        tokens.url(req, res),
+        tokens.status(req, res),
+        tokens.res(req, res, 'content-length'),
         '-',
-        tokens['response-time'](request, response),
+        tokens['response-time'](req, res),
         'ms',
-        tokens['request-body'](request, response),
+        tokens['request-body'](req, res),
     ].join(' ').concat('\n--------------')
 }))
 
@@ -62,11 +62,11 @@ app.use(morgan(function (tokens, request, response) {
 
 
 // routes
-app.get('/info', (request, response, next) => {
+app.get('/info', (req, res, next) => {
     Person
         .find({})
         .then(persons => {
-            response.send(`
+            res.send(`
                 <div>
                     Phonebook has info for ${ persons.length } people
                 </div>
@@ -78,74 +78,74 @@ app.get('/info', (request, response, next) => {
         .catch(error => next(error))
 })
 
-app.get('/api/persons', (request, response, next) => {
+app.get('/api/persons', (req, res, next) => {
     Person
         .find({})
         .then(persons => {
-            response.json(persons.map(p => p.toJSON()))
+            res.json(persons.map(p => p.toJSON()))
         })
         .catch(error => next(error))
 })
 
-app.get('/api/persons/:id', (request, response, next) => {
+app.get('/api/persons/:id', (req, res, next) => {
     Person
-        .findById(request.params.id)
+        .findById(req.params.id)
         .then(person => {
             if (person) {
-                response.json(person.toJSON())
+                res.json(person.toJSON())
             } else {
-                response.status(404).send({ error: 'not found' })
+                res.status(404).send({ error: 'not found' })
             }
 
         })
         .catch(error => next(error))
 })
 
-app.post('/api/persons', (request, response, next) => {
-    if (!request.body.name || !request.body.number) {
-        return response.status(400).json({
+app.post('/api/persons', (req, res, next) => {
+    if (!req.body.name || !req.body.number) {
+        return res.status(400).json({
             error: 'content missing'
         })
     }
 
     const person = new Person({
-        name: request.body.name,
-        number: request.body.number
+        name: req.body.name,
+        number: req.body.number
     })
 
     person
         .save()
         .then(person => {
-            response.json(person.toJSON())
+            res.json(person.toJSON())
         })
         .catch(error => next(error))
 })
 
-app.put('/api/persons/:id', (request, response, next) => {
-    if (!request.body.name || !request.body.number) {
-        return response.status(400).json({
+app.put('/api/persons/:id', (req, res, next) => {
+    if (!req.body.name || !req.body.number) {
+        return res.status(400).json({
             error: 'content missing'
         })
     }
 
     const person = {
-        name: request.body.name,
-        number: request.body.number,
+        name: req.body.name,
+        number: req.body.number,
     }
 
     Person
-        .findByIdAndUpdate(request.params.id, person, { new: true })
+        .findByIdAndUpdate(req.params.id, person, { new: true, runValidators: true, context: 'query' })
         .then(updatedPerson => {
-            response.json(updatedPerson.toJSON())
+            res.json(updatedPerson.toJSON())
         })
         .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response, next) => {
+app.delete('/api/persons/:id', (req, res, next) => {
     Person
-        .findByIdAndRemove(request.params.id)
+        .findByIdAndRemove(req.params.id)
         .then(() => {
-            response.status(204).end()
+            res.status(204).end()
         })
         .catch(error => next(error))
 })
